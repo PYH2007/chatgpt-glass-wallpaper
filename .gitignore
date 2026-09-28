@@ -12,3 +12,6 @@
 *.mov
 screenshots/
 private/
+
+# Reviewed public preview
+!preview.png
