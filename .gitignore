@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+*.log
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.mp4
+*.webm
+*.mov
+screenshots/
+private/
