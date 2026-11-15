@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         ChatGPT Dynamic Glass Wallpaper
 // @namespace    chatgpt-wallpaper
-// @version      1.9.8
+// @version      1.9.19
 // @description  ChatGPT local image or video wallpaper
 // @match        https://chatgpt.com/*
 // @run-at       document-idle
+// @updateURL    https://raw.githubusercontent.com/PYH2007/chatgpt-glass-wallpaper/main/chatgpt-dynamic-glass-wallpaper.user.js
+// @downloadURL  https://raw.githubusercontent.com/PYH2007/chatgpt-glass-wallpaper/main/chatgpt-dynamic-glass-wallpaper.user.js
 // @grant        none
 // ==/UserScript==
 
@@ -16,6 +18,27 @@
     const WALLPAPER_STORE_NAME = 'wallpapers';
     const WALLPAPER_RECORD_KEY = 'active-video';
     const PREVIOUS_VIDEO_RECORD_KEY = 'previous-video';
+    const SUMMARY_PANEL_HIDDEN_KEY = 'gpt-wallpaper-hide-summary-panel';
+
+    // Hide the Work Outputs/Sources card by default. Option+Shift+O toggles it.
+    document.body.classList.toggle(
+        'gpt-hide-work-summary',
+        localStorage.getItem(SUMMARY_PANEL_HIDDEN_KEY) !== 'false'
+    );
+    document.addEventListener('keydown', (event) => {
+        if (
+            event.code !== 'KeyO' ||
+            !event.altKey ||
+            !event.shiftKey ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.repeat
+        ) return;
+
+        event.preventDefault();
+        const hidden = document.body.classList.toggle('gpt-hide-work-summary');
+        localStorage.setItem(SUMMARY_PANEL_HIDDEN_KEY, String(hidden));
+    }, true);
 
     /*
     ============================================================
@@ -189,7 +212,7 @@
 
     wallpaperVideo.id = 'gpt-video-wallpaper';
 
-    wallpaperVideo.autoplay = true;
+    wallpaperVideo.autoplay = false; // Explicit playback obeys visibility and user pause.
     wallpaperVideo.loop = true;
     wallpaperVideo.muted = true;
     wallpaperVideo.playsInline = true;
@@ -269,6 +292,13 @@
     */
 
     let wallpaperObjectURL = null;
+    let wallpaperUserPaused = false;
+
+    function wallpaperCanPlay() {
+        return !document.hidden && !wallpaperUserPaused &&
+            wallpaperVideo.isConnected && Boolean(wallpaperVideo.getAttribute('src')) &&
+            wallpaperImage.style.display !== 'block';
+    }
 
     function openWallpaperDatabase() {
         return new Promise((resolve, reject) => {
@@ -342,6 +372,7 @@
     }
 
     function applyWallpaperBlob(wallpaperBlob) {
+        wallpaperUserPaused = false;
         if (wallpaperObjectURL) {
             URL.revokeObjectURL(wallpaperObjectURL);
         }
@@ -466,8 +497,10 @@
     wallpaperVideo.addEventListener('loadeddata', async () => {
         wallpaperVideo.playbackRate = SETTINGS.playbackSpeed;
 
+        if (!wallpaperCanPlay()) return;
         try {
             await wallpaperVideo.play();
+            if (!wallpaperCanPlay()) wallpaperVideo.pause();
             console.log('[Wallpaper Module 2] Video loaded successfully.');
         } catch (playError) {
             console.warn(
@@ -512,9 +545,7 @@
     document.addEventListener(
         'pointerdown',
         () => {
-            wallpaperVideo
-                .play()
-                .catch(() => {});
+            if (wallpaperCanPlay()) wallpaperVideo.play().catch(() => {});
         },
         {
             once: true,
@@ -570,13 +601,13 @@
         åªä¿®æ”¹èƒŒæ™¯å’Œå±‚çº§ï¼Œä¸ä¿®æ”¹ positionã€‚
         */
 
-        body > div:not(#gpt-video-wallpaper):not(#gpt-wallpaper-loading-status):not(#gpt-wallpaper-error-message) {
+        body:not([data-gpt-dot-ui]) > div:not(#gpt-video-wallpaper):not(#gpt-wallpaper-loading-status):not(#gpt-wallpaper-error-message) {
             z-index: 1;
             background-color: transparent !important;
             background-image: none !important;
         }
 
-        body > div:not(#gpt-video-wallpaper) > div {
+        body:not([data-gpt-dot-ui]) > div:not(#gpt-video-wallpaper) > div {
             background-color: transparent !important;
             background-image: none !important;
         }
@@ -1038,7 +1069,7 @@
         }
 
         html body [data-gpt-composer-v18="shell"] {
-            background: rgba(13, 19, 30, 0.14) !important;
+            background: rgba(13, 19, 30, 0.30) !important;
             background-clip: padding-box !important;
             border-color: rgba(255, 255, 255, 0.18) !important;
         }
@@ -1109,6 +1140,49 @@
         });
     }
 
+    function updateDotLayout(active) {
+        const scroller = document.querySelector('.messaging-root.messaging-embedded .messages-scroll');
+        const enabled = location.pathname.startsWith('/dots/') && Boolean(scroller);
+        if (document.body.hasAttribute('data-gpt-dot-ui') !== enabled)
+            document.body.toggleAttribute('data-gpt-dot-ui', enabled);
+        if (!enabled) return;
+        const rect = scroller.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const setMetric = (key, value) => {
+            if (document.body.style.getPropertyValue(key) !== value)
+                document.body.style.setProperty(key, value);
+        };
+        const trigger = Array.from(document.querySelectorAll('[data-orbit-profile-trigger]'))
+            .find(element => element.getBoundingClientRect().height > 0 &&
+                element.closest('[style*="position-anchor: --orbit-messaging-header"]'));
+        if (trigger) {
+            const header = trigger.closest('[style*="position-anchor: --orbit-messaging-header"]');
+            if (header && !header.hasAttribute('data-gpt-dot-header'))
+                header.setAttribute('data-gpt-dot-header', '');
+            if (!trigger.parentElement.hasAttribute('data-gpt-dot-avatar'))
+                trigger.parentElement.setAttribute('data-gpt-dot-avatar', '');
+            active.add(trigger);
+            setMetric('--gpt-dot-top-safe', Math.ceil(Math.max(88,
+                trigger.getBoundingClientRect().bottom - rect.top + 12)) + 'px');
+        }
+        let root = scroller.closest('.messaging-root');
+        let wrap = null;
+        while (root && !wrap) {
+            wrap = root.querySelector('.composer-wrap');
+            if (!wrap) root = root.parentElement?.closest('.messaging-root');
+        }
+        if (wrap && wrap.getBoundingClientRect().height > 0) {
+            active.add(wrap);
+            const occupied = Math.max(0, rect.bottom - wrap.getBoundingClientRect().top);
+            setMetric('--gpt-dot-bottom-safe', Math.ceil(occupied) + 'px');
+            // Native Dot already has a bottom spacer; reserve only the shortfall.
+            const spacer = Array.from(scroller.children)
+                .find(element => element.matches('.pointer-events-none.shrink-0'));
+            const reserved = spacer?.getBoundingClientRect().height || 0;
+            setMetric('--gpt-dot-tail-padding', Math.ceil(Math.max(0, occupied - reserved) + 12) + 'px');
+        }
+    }
+
     function markComposerLayers() {
         module6Observer.disconnect();
         try {
@@ -1126,15 +1200,18 @@
             };
 
             const active = new Set();
+            updateDotLayout(active);
             for (const editor of document.querySelectorAll(composerEditorSelector)) {
                 if (editor.closest(composerProtected)) continue;
                 const editorBox = editor.getBoundingClientRect();
                 if (!editorBox.width || !editorBox.height) continue;
 
-                let shell = null;
+                // Dot exposes a semantic shell; attachments must share this surface.
+                const dotWrap = editor.closest('.messaging-root.messaging-embedded .composer-wrap');
+                let shell = dotWrap ? editor.closest('[data-composer-surface-variant]') : null;
                 let semantic = null;
                 let node = editor.parentElement;
-                for (let depth = 0; node && depth < 10; depth++, node = node.parentElement) {
+                for (let depth = 0; !shell && node && depth < 10; depth++, node = node.parentElement) {
                     if (node.matches('main, body, html, #root, #__next') ||
                         node.matches(composerProtected) ||
                         node.querySelector('[data-message-author-role], article')) break;
@@ -1240,6 +1317,7 @@
     document.addEventListener('focusin', scheduleComposerScan, true);
     document.addEventListener('input', scheduleComposerScan, true);
     window.addEventListener('resize', scheduleComposerScan, { passive: true });
+    window.addEventListener('popstate', scheduleComposerScan);
     markComposerLayers();
         /*
     ============================================================
@@ -2475,9 +2553,9 @@
 
     function playWallpaperVideo() {
 
-        if (document.getElementById('gpt-image-wallpaper')?.style.display === 'block') {
-            return;
-        }
+        if (document.hidden || wallpaperUserPaused ||
+            document.getElementById('gpt-image-wallpaper')?.style.display === 'block' ||
+            !module9Video?.getAttribute('src')) return;
 
         if (!module9Video) {
             showWallpaperError(
@@ -2524,6 +2602,7 @@
         module9Video
             .play()
             .then(() => {
+                if (!wallpaperCanPlay()) module9Video.pause();
                 module9RetryCount = 0;
                 removeWallpaperError();
             })
@@ -2546,6 +2625,7 @@
 
     function retryWallpaperVideo() {
 
+        if (!wallpaperCanPlay()) return;
         if (!module9Video) {
             return;
         }
@@ -2569,7 +2649,7 @@
 
         module9RecoveryTimer =
             setTimeout(() => {
-
+                if (!wallpaperCanPlay()) return;
                 console.warn(
                     '[Wallpaper Module 9] Retry:',
                     module9RetryCount
@@ -2683,7 +2763,10 @@
     document.addEventListener(
         'visibilitychange',
         () => {
-            if (!document.hidden) {
+            if (document.hidden) {
+                clearTimeout(module9RecoveryTimer);
+                module9Video?.pause();
+            } else {
                 playWallpaperVideo();
             }
         }
@@ -2912,8 +2995,9 @@
                 return;
             }
 
+            wallpaperUserPaused = false;
             module9RetryCount = 0;
-
+            if (!wallpaperCanPlay()) return;
             module9Video.load();
 
             playWallpaperVideo();
@@ -2924,6 +3008,8 @@
         },
 
         pause() {
+            wallpaperUserPaused = true;
+            clearTimeout(module9RecoveryTimer);
             module9Video?.pause();
 
             console.log(
@@ -2932,6 +3018,7 @@
         },
 
         play() {
+            wallpaperUserPaused = false;
             playWallpaperVideo();
 
             console.log(
@@ -2974,6 +3061,23 @@
     const module10Style = document.createElement('style');
     module10Style.id = 'gpt-wallpaper-module-10-style';
     module10Style.textContent = `
+        /* Preserve the user's existing Outputs/Sources visibility preference. */
+        html body.gpt-hide-work-summary div:has(> [data-summary-panel-variant]) {
+            display: none !important;
+        }
+
+        /* The footer can sit beyond Module 6's ancestor limit. Its empty,
+           aria-hidden paint layer is decorative; leave controls and layout intact. */
+        html body [data-thread-scroll-footer="true"] > div[aria-hidden="true"]:empty,
+        html body [data-thread-scroll-footer="true"] > div[aria-hidden="true"]:empty::before,
+        html body [data-thread-scroll-footer="true"] > div[aria-hidden="true"]:empty::after {
+            background: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
         /* Collapsed sidebar rail and conversation breadcrumb sit outside the expanded aside. */
         html body nav[class*="group/sidebar-rail"],
         html body nav[aria-label="Breadcrumb"] {
@@ -3043,4 +3147,254 @@
         }
     `;
     document.documentElement.appendChild(module10Style);
+})();
+
+// 2026-10-01: current web titlebar surfaces and left navigation divider.
+(function () {
+    'use strict';
+    const id = 'gpt-wallpaper-titlebar-sidebar-fix';
+    document.getElementById(id)?.remove();
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+        html body [data-app-shell-titlebar] .bg-surface,
+        html body [data-app-shell-titlebar] .bg-surface::before,
+        html body [data-app-shell-titlebar] .bg-surface::after {
+            background: transparent !important;
+            background-image: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+        }
+        html body [data-app-shell-main-surface="browser"] {
+            border-inline-start-color: transparent !important;
+            border-left-color: transparent !important;
+        }
+    `;
+    document.documentElement.appendChild(style);
+})();
+
+
+// 2026-10-05: maintain the observed background layers in one repair registry.
+// Semantic shell markers and named messaging containers survive SPA remounts.
+// Keep surface rules narrow; do not alter geometry, opacity, content or menus.
+// CSS automatically covers later mounts, so no polling or MutationObserver is needed.
+(function () {
+    'use strict';
+    const REPAIR_CONFIG = {
+        styleId: 'gpt-wallpaper-current-surfaces-fix',
+        layers: [
+        {
+                "name": "workspace-background",
+                "selector": "html body [data-app-shell-workspace-row=\"true\"]::before, html body [data-app-shell-workspace=\"true\"]::before",
+                "declarations": [
+                        [
+                                "background-color",
+                                "transparent"
+                        ],
+                        [
+                                "background-image",
+                                "none"
+                        ]
+                ]
+        },
+        {
+                "name": "embedded-dot-background",
+                "selector": "html body .messaging-root.messaging-embedded",
+                "declarations": [
+                        [
+                                "background-color",
+                                "transparent"
+                        ],
+                        [
+                                "background-image",
+                                "none"
+                        ]
+                ]
+        },
+        {
+                "name": "dot-composer-decoration",
+                "selector": "html body .messaging-root.messaging-embedded .composer-wrap .pointer-events-none.bg-gradient-to-t",
+                "declarations": [
+                        [
+                                "background-image",
+                                "none"
+                        ]
+                ]
+        },
+        {
+                "name": "qualified-settings-background",
+                "selector": "html body [data-app-shell-focus-area=\"main\"] [data-codex-history-swipe-page=\"true\"] > [class~=\"electron:bg-surface\"][class~=\"electron:overflow-hidden\"][class~=\"windows:rounded-tl-lg\"]",
+                "declarations": [
+                        [
+                                "background-color",
+                                "transparent"
+                        ],
+                        [
+                                "background-image",
+                                "none"
+                        ]
+                ]
+        }
+]
+    };
+    const css = REPAIR_CONFIG.layers.map((layer) => {
+        const declarations = layer.declarations.map(([property, value]) =>
+            `    ${property}: ${value} !important;`
+        ).join('\n');
+        return `${layer.selector} {\n${declarations}\n}`;
+    }).join('\n\n');
+    // A repeated initialization replaces this one sheet; all other styles remain.
+    document.getElementById(REPAIR_CONFIG.styleId)?.remove();
+    const style = document.createElement('style');
+    style.id = REPAIR_CONFIG.styleId;
+    style.textContent = css;
+    document.documentElement.appendChild(style);
+})();
+
+// 2026-11-01: scoped Dot readability, measured avatar/composer safety bounds.
+(function () {
+    'use strict';
+    const id = 'gpt-wallpaper-dot-surfaces-v1';
+    document.getElementById(id)?.remove();
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+/* Dot-only surfaces; no geometry resets or blanket descendant transparency. */
+html body[data-gpt-dot-ui] {
+    --gpt-dot-top-safe: 104px;
+    --gpt-dot-bottom-safe: 72px;
+}
+/* Actual app frame is the opaque child of #root, behind every Dot surface. */
+html body[data-gpt-dot-ui] #root > [data-app-shell-frame="true"] {
+    background-color: transparent !important;
+    background-image: none !important;
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .messages-scroll {
+    /* Padding alone scrolls away: clip the live viewport below the fixed avatar. */
+    clip-path: inset(var(--gpt-dot-top-safe) 0 var(--gpt-dot-bottom-safe) 0);
+    padding-block-start: max(112px, calc(var(--gpt-dot-top-safe) + 12px)) !important;
+    scroll-padding-block: calc(var(--gpt-dot-top-safe) + 12px) calc(var(--gpt-dot-bottom-safe) + 12px);
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .messages-scroll > .message-list {
+    padding-block-end: var(--gpt-dot-tail-padding, calc(var(--gpt-dot-bottom-safe) + 12px)) !important;
+}
+
+/* Candidate: native empty decorative scrim observed on current Dot DOM. */
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap
+[data-codex-composer-root] > .pointer-events-none >
+[aria-hidden="true"].pointer-events-none.absolute.inset-x-0.bottom-0:empty {
+    background-image: none !important;
+}
+
+/* Dot attachment layout only. Preserve native expanded editor and file cards. */
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap
+[data-composer-body]:not(:has([data-expanded-composer])) [data-composer-attachments][data-visible-attachments] {
+    padding: 8px 8px 0 !important;
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap
+[data-composer-body]:not(:has([data-expanded-composer])) [data-visible-attachments] > .composer-uploads {
+    margin-bottom: 0 !important;
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap
+[data-composer-body]:not(:has([data-expanded-composer])) [data-composer-attachments-row] >
+.composer-attachment-surface[aria-label]:has(> .composer-attachment-surface > img) {
+    width: 72px !important;
+    height: 72px !important;
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap
+[data-composer-body]:has([data-visible-attachments]):not(:has([data-expanded-composer]))
+[data-composer-input-layout="multiline"] {
+    padding-block: 10px !important;
+}
+
+html body[data-gpt-dot-ui] [data-gpt-dot-header] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+html body[data-gpt-dot-ui] [data-gpt-dot-avatar] {
+    background: rgba(10,15,24,.86) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border-radius: 18px;
+    box-shadow: inset 0 0 0 1px rgba(220,225,255,.14);
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .message-row:not(.self) .message-bubble {
+    background: rgba(12,18,29,.80) !important;
+    color: #f2f3f7 !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    box-shadow: inset 0 0 0 1px rgba(220,225,255,.10), 0 4px 14px rgba(0,0,0,.12);
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .message-row.self .message-bubble {
+    background: rgba(42,62,92,.94) !important;
+    color: #f5f7ff !important;
+    box-shadow: inset 0 0 0 1px rgba(165,190,235,.22);
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap [data-composer-surface-variant],
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap [data-gpt-composer-v18="shell"] {
+    background: rgba(13,20,32,.86) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-radius: 20px !important;
+    box-shadow: inset 0 0 0 1px rgba(205,215,245,.20), 0 6px 24px rgba(0,0,0,.20) !important;
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap [contenteditable="true"] {
+    color: #f2f3f7 !important;
+    caret-color: #d9e5ff;
+}
+html body[data-gpt-dot-ui] nav[data-app-navigation-rail="true"] {
+    background: rgba(10,15,24,.58) !important;
+    box-shadow: inset -1px 0 0 rgba(220,225,255,.12) !important;
+}
+html body[data-gpt-dot-ui] :is([role="menu"], [role="listbox"], [role="dialog"]) {
+    background: rgba(16,23,36,.98) !important;
+    color: #f2f3f7 !important;
+}
+html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap button:focus-visible {
+    outline: 2px solid #b7cbff;
+    outline-offset: 2px;
+}
+`;
+    document.documentElement.appendChild(style);
+})();
+
+
+/* v1.9.18: Reduce compositing load on ChatGPT conversation surfaces.
+   Keep wallpaper storage and UI geometry unchanged. */
+(function () {
+    const style = document.createElement('style');
+    style.id = 'gpt-wallpaper-low-compositing-v18';
+    style.textContent = `
+        body.gpt-wallpaper-image-active *,
+        body.gpt-wallpaper-image-active *::before,
+        body.gpt-wallpaper-image-active *::after,
+        body.gpt-wallpaper-image-active::before,
+        body.gpt-wallpaper-image-active::after {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+    `;
+    document.documentElement.appendChild(style);
+})();
+
+// Footer scrim compatibility: image and video wallpapers.
+
+
+(() => {
+  'use strict';
+  const id = 'chatgpt-wallpaper-footer-fix';
+  if (document.getElementById(id)) return;
+  const style = document.createElement('style');
+  style.id = id;
+  style.textContent = `
+    html body:has(#gpt-video-wallpaper, #gpt-image-wallpaper)
+      div[class*="footer-"].pointer-events-none.absolute.inset-x-0.bottom-0::before,
+    html body:has(#gpt-video-wallpaper, #gpt-image-wallpaper)
+      div[class*="footer-"].pointer-events-none.absolute.inset-x-0.bottom-0::after {
+      background: transparent !important;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(style);
 })();

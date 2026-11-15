@@ -1,6 +1,6 @@
 # ChatGPT Dynamic Glass Wallpaper
 
-A userscript that adds a local image or video wallpaper and glass-style surfaces to the ChatGPT website. Version **1.9.8**. Unofficial; not affiliated with OpenAI.
+A userscript that adds a local image or video wallpaper and glass-style surfaces to the ChatGPT website. Version **1.9.19**. Unofficial; not affiliated with OpenAI.
 
 为 ChatGPT 网页版添加本地图片／视频壁纸和毛玻璃效果。适用于 Tampermonkey 等 userscript 管理器，不是桌面端皮肤或 Codex Plugin。
 
@@ -8,7 +8,7 @@ A userscript that adds a local image or video wallpaper and glass-style surfaces
 
 ![ChatGPT 毛玻璃与视频壁纸历史效果预览](preview.png)
 
-这张图保留自早期 1.9 版本，用于展示壁纸与透明界面的整体效果；不代表 1.9.8 在当前网页上的完整视觉验收。图中的壁纸不单独提供下载，安装后请选择自己的素材。
+这张图保留自早期 1.9 版本，用于展示壁纸与透明界面的整体效果；不代表 1.9.19 在当前网页上的完整视觉验收。图中的壁纸不单独提供下载，安装后请选择自己的素材。
 
 ## 功能
 
@@ -20,7 +20,7 @@ A userscript that adds a local image or video wallpaper and glass-style surfaces
 ## 安装与使用
 
 1. 安装可信来源的 Tampermonkey。
-2. 在管理器中新建脚本，用本仓库的 `chatgpt-dynamic-glass-wallpaper.user.js` 完整替换默认内容并保存。
+2. 先备份现有脚本，再打开[固定安装地址](https://raw.githubusercontent.com/PYH2007/chatgpt-glass-wallpaper/main/chatgpt-dynamic-glass-wallpaper.user.js)，由 Tampermonkey 确认更新。
 3. 只启用一份此脚本，打开或刷新 `https://chatgpt.com/`。
 4. 点击“选择图片或视频壁纸”，选择自己的本地文件。
 5. 换壁纸：macOS 按 **Option + Shift + W**；其他系统按 **Alt + Shift + W**。
@@ -39,7 +39,7 @@ A userscript that adds a local image or video wallpaper and glass-style surfaces
 
 ## 兼容性与限制
 
-ChatGPT 页面结构变化后可能需要更新 CSS。本次发布保留 1.9.8 的原有行为；没有重新执行所有页面的视觉回归。部分旧注释存在字符编码乱码，不影响 JavaScript 语法。内置 `pause()` 可能被自动恢复播放机制覆盖；需要停止运行时请禁用脚本并刷新。
+ChatGPT 页面结构变化后可能需要更新 CSS。本次发布基于已有 1.9.18 代码，补充 GitHub 自动更新地址及图片/视频模式下底栏背景修复；通过 JavaScript 语法检查，没有执行当前浏览器安装和完整视觉回归。部分旧注释存在字符编码乱码，不影响 JavaScript 语法。内置 `pause()` 可能被自动恢复播放机制覆盖；需要停止运行时请禁用脚本并刷新。
 
 ## 校验
 
@@ -53,4 +53,10 @@ ChatGPT 页面结构变化后可能需要更新 CSS。本次发布保留 1.9.8 �
 
 ## 项目状态
 
-这是个人实验项目，使用 AI 辅助开发。当前推荐版本为 1.9.8；保留早期项目的效果展示和说明，但未导入旧仓库的 Git 历史。仓库尚未指定开源许可证。
+这是个人实验项目，使用 AI 辅助开发。当前推荐版本为 1.9.19；保留早期项目的效果展示和说明，但未导入旧仓库的 Git 历史。仓库尚未指定开源许可证。
+
+## 自动更新与设置
+
+`@updateURL` 和 `@downloadURL` 指向此仓库 main 分支的固定 HTTPS 地址。首次安装此版本后，Tampermonkey 按自身设置检查更新；紧急修复可在管理器手动检查更新。每次发布必须递增 `@version`。更新来源为公开 GitHub，管理器检查版本和下载代码会连接 GitHub，但脚本本身不上传聊天或壁纸。
+
+仍沿用原有 IndexedDB 名称和媒体记录键，不清除已选壁纸。脚本顶部 `SETTINGS` 是内嵌参数：若曾自行改过，应备份并对照新版保留；不能声称未知旧版参数会自动迁移。若更新后不满意，可从 Git 历史或本机备份恢复旧脚本。不要同时运行两份主脚本。

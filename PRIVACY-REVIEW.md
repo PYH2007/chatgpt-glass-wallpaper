@@ -1,19 +1,12 @@
 # Release privacy review
 
-Review date: 2026-09-28. Scope: userscript version 1.9.8 and the exact files in this release directory.
+Review date: 2026-11-15. Scope: version 1.9.19 code and release documentation only.
 
-## Findings
+- Based on independently saved 1.9.18 source; original script body and storage keys preserved. Appended a CSS-only native footer fix scoped to existing image/video wallpaper elements.
+- No embedded private contact data, credentials, browser exports, wallpaper payloads, conversation IDs, or local home paths found by source pattern review.
+- New HTTPS metadata points to this public repository. Tampermonkey may contact GitHub for version checks and script download. No telemetry or outbound request API was added to the script.
+- Existing local IndexedDB media and localStorage preference behavior retained. Embedded SETTINGS remain source defaults, not a verified export of any installed instance.
+- JavaScript compilation passed. Live installation, visual regression, update fetching in Tampermonkey, and actual saved wallpaper restoration have not been verified.
+- Existing preview.png retained unchanged; historical preview review is preserved in Git history.
 
-- No embedded personal email, username, home-directory path, conversation identifier, credential, private key, wallpaper payload, or account export was found in the script.
-- No outbound request implementation (`fetch`, XMLHttpRequest, WebSocket, sendBeacon, or userscript network API), remote dependency, CSS resource URL, or dynamic code loader was found.
-- Media sources are local object URLs created from user-selected files. Storage is limited to the wallpaper IndexedDB, including the previous-video backup described in README.
-- DOM text is inspected locally for appearance-related matching. This is not a promise that the script cannot access page text: it runs inside the page context.
-- Release files were selected explicitly. No old repository history, diagnostic outputs, AI conversation records, original wallpaper files, or environment files are included. One historical preview image is included after visual and metadata review; it shows the themed start page without email addresses or chat messages.
-
-## Limits
-
-This is source review and pattern scanning, not a penetration test or a guarantee of zero risk. It does not audit ChatGPT itself, the browser, the userscript manager, other extensions, or future code changes. No new visual regression run was performed for this publication.
-
-## Historical preview import
-
-The prior project preview is reused unchanged as `preview.png`. Its visible content and PNG metadata were reviewed: no email address, credentials, or chat transcript was found. The image shows a profile-initial icon and generic suggestion cards. Metadata contains image dimensions, color profile, resolution and a generic Screenshot comment, not an author identity or GPS location. The README labels it as an earlier-version demonstration. The latest script remains byte-for-byte unchanged.
+This is bounded source review, not a security guarantee. Browser/site/extension behavior and future updates are outside this review.
