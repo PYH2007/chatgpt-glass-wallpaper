@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Dynamic Glass Wallpaper
 // @namespace    chatgpt-wallpaper
-// @version      1.9.19
+// @version      1.9.21
 // @description  ChatGPT local image or video wallpaper
 // @match        https://chatgpt.com/*
 // @run-at       document-idle
@@ -3397,4 +3397,69 @@ html body[data-gpt-dot-ui] .messaging-root.messaging-embedded .composer-wrap but
     }
   `;
   (document.head || document.documentElement).appendChild(style);
+})();
+
+
+// v1.9.20: remove webpage titlebar paint only when a real wallpaper is selected.
+// The browser frame, wallpaper media, input and menus are not modified.
+(() => {
+    'use strict';
+    const id = 'gpt-wallpaper-titlebar-paint-v1920';
+    if (document.getElementById(id)) return;
+    const root = 'html body:has(> #gpt-image-wallpaper[src^="blob:"], > #gpt-video-wallpaper[src^="blob:"])';
+    const title = root + ' [data-app-shell-titlebar]';
+    const paint = title + ' > .bg-surface:not(:is(button, a, [role="button"], [role="menu"], [role="listbox"], [role="dialog"]))';
+    const selectors = [title, title + '::before', title + '::after', paint, paint + '::before', paint + '::after'];
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = selectors.join(',\n') + ' { background-color: transparent !important; background-image: none !important; box-shadow: none !important; }';
+    (document.head || document.documentElement).appendChild(style);
+})();
+
+// v1.9.21: soften four narrow web surfaces without touching the wallpaper,
+// native fullscreen chrome, text, tool controls, focus outlines or menus.
+(() => {
+    'use strict';
+    const id = 'gpt-wallpaper-edge-paint-v1921';
+    if (document.getElementById(id)) return;
+
+    const wallpaper = 'html body:has(> #gpt-image-wallpaper[src^="blob:"], > #gpt-video-wallpaper[src^="blob:"])';
+    const surface = (selector) => wallpaper + ' ' + selector;
+    const passive = ':not([role], [tabindex], [contenteditable])';
+    const title = surface(':is([data-app-shell-titlebar], [data-testid="page-header"], nav[aria-label="Breadcrumb"])');
+    const sidebar = surface(':is(nav[data-app-navigation-rail="true"], nav[class*="group/sidebar-rail"], aside.app-shell-left-panel)');
+    const sidebarPaint = surface('aside.app-shell-left-panel div.absolute.inset-0.bg-surface' + passive);
+    const divider = surface('[class*="group/panel-resizer"] > [class*="cursor-col-resize"]');
+    const activeComposer = surface(':is([data-gpt-composer-v18="shell"], .composer-wrap [data-composer-surface-variant])');
+    const footerBar = surface('[data-composer-bar-placement="footer"]');
+    const footerInner = footerBar + ' > :is(div, section, footer)' + passive;
+    const threadFooterPaint = surface('[data-thread-scroll-footer="true"] > div[aria-hidden="true"]:empty');
+    const nativeScrim = surface('div[class*="footer-"].pointer-events-none.absolute.inset-x-0.bottom-0');
+    const decoration = (selector) => [selector + '::before', selector + '::after'];
+    const clearPaint = [
+        title, ...decoration(title),
+        sidebar, ...decoration(sidebar), sidebarPaint, ...decoration(sidebarPaint), divider,
+        footerBar, ...decoration(footerBar), footerInner, ...decoration(footerInner),
+        threadFooterPaint, ...decoration(threadFooterPaint), ...decoration(nativeScrim)
+    ];
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+${clearPaint.join(',\n')} {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+}
+${activeComposer} {
+    background-color: rgba(13, 19, 30, .34) !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+${activeComposer}:focus-within {
+    border-color: rgba(218, 225, 247, .17) !important;
+}
+`;
+    (document.head || document.documentElement).appendChild(style);
 })();
