@@ -1,6 +1,6 @@
 # ChatGPT Dynamic Glass Wallpaper
 
-A userscript that adds a local image or video wallpaper and glass-style surfaces to the ChatGPT website. Version **1.9.21**. Unofficial; not affiliated with OpenAI.
+A userscript that adds a local image or video wallpaper and glass-style surfaces to the ChatGPT website. Version **1.9.22**. Unofficial; not affiliated with OpenAI.
 
 为 ChatGPT 网页版添加本地图片／视频壁纸和毛玻璃效果。适用于 Tampermonkey 等 userscript 管理器，不是桌面端皮肤或 Codex Plugin。
 
@@ -8,7 +8,7 @@ A userscript that adds a local image or video wallpaper and glass-style surfaces
 
 ![ChatGPT 毛玻璃与视频壁纸历史效果预览](preview.png)
 
-这张图保留自早期 1.9 版本，用于展示壁纸与透明界面的整体效果；不代表 1.9.21 在当前网页上的完整视觉验收。图中的壁纸不单独提供下载，安装后请选择自己的素材。
+这张图保留自早期 1.9 版本，用于展示壁纸与透明界面的整体效果；不代表 1.9.22 在当前网页上的完整视觉验收。图中的壁纸不单独提供下载，安装后请选择自己的素材。
 
 ## 功能
 
@@ -16,6 +16,7 @@ A userscript that adds a local image or video wallpaper and glass-style surfaces
 - 浏览器 IndexedDB 保存选择，刷新后自动恢复。
 - 可调整亮度、模糊、饱和度和各区域透明度。
 - 使用 DOM 观察器适配页面切换，不需要 API Key。
+- 选用本地壁纸时，淡化对话页标题栏下的深色渐变，去掉导航栏旁的装饰描边，并将 Work 首页项目、文件、插件工具行的整块深底换成薄透背板。原生窗口边缘不受影响。
 
 ## 安装与使用
 
@@ -53,7 +54,7 @@ ChatGPT 页面结构变化后可能需要更新 CSS。本次发布基于已有 1
 
 ## 项目状态
 
-这是个人实验项目，使用 AI 辅助开发。当前推荐版本为 1.9.21；保留早期项目的效果展示和说明，但未导入旧仓库的 Git 历史。仓库尚未指定开源许可证。
+这是个人实验项目，使用 AI 辅助开发。当前推荐版本为 1.9.22；保留早期项目的效果展示和说明，但未导入旧仓库的 Git 历史。仓库尚未指定开源许可证。
 
 ## 自动更新与设置
 

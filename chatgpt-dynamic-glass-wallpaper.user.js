@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Dynamic Glass Wallpaper
 // @namespace    chatgpt-wallpaper
-// @version      1.9.21
+// @version      1.9.22
 // @description  ChatGPT local image or video wallpaper
 // @match        https://chatgpt.com/*
 // @run-at       document-idle
@@ -3459,6 +3459,47 @@ ${activeComposer} {
 }
 ${activeComposer}:focus-within {
     border-color: rgba(218, 225, 247, .17) !important;
+}
+`;
+    (document.head || document.documentElement).appendChild(style);
+})();
+
+// v1.9.22: keep the wallpaper continuous under the chat header, nav rail and Work utility row.
+// Only adjust decorative paint, and only with a user-selected local wallpaper.
+(() => {
+    'use strict';
+    const id = 'gpt-wallpaper-header-decoration-v1922';
+    if (document.getElementById(id)) return;
+
+    const wallpaper = 'html body:has(> #gpt-image-wallpaper[src^="blob:"], > #gpt-video-wallpaper[src^="blob:"])';
+    const passive = 'div[aria-hidden="true"].pointer-events-none.absolute:empty:not([role], [tabindex], [contenteditable])';
+    const topFade = wallpaper + ' ' + passive + '.inset-x-0.top-0[class*="bg-[image:var(--app-shell-content-fade,"]';
+    const pageRim = wallpaper + ' ' + passive + '.inset-y-0.end-0[class~="start-(--app-shell-navigation-rail-width)"][class~="shadow-(--app-shell-page-surface-shadow)"]';
+    const utilityBackdrop = 'div.bg-background-composer-action-bar:not([role], [tabindex], [contenteditable])';
+    const utilitySignal = ':is([aria-label="Composer utility bar"], [class*="horizontal-scroll-fade-mask"])';
+    const utilityRow = wallpaper + ' ' + utilityBackdrop + ':has(' + utilitySignal + ')';
+    const utilityRim = wallpaper + ' div:not([role], [tabindex], [contenteditable]):has(> ' + utilityBackdrop + ' ' + utilitySignal + ')::after';
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+${topFade} {
+    background-color: transparent !important;
+    background-image: linear-gradient(to bottom, rgba(5, 7, 12, .26) 0%, rgba(5, 7, 12, .12) 42%, transparent 100%) !important;
+    background-size: 100% 52px !important;
+    background-repeat: no-repeat !important;
+}
+${pageRim} {
+    box-shadow: none !important;
+}
+${utilityRow} {
+    background-color: rgba(13, 19, 30, .22) !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+${utilityRim} {
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 `;
     (document.head || document.documentElement).appendChild(style);
